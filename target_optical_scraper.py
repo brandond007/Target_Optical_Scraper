@@ -227,61 +227,61 @@ def scrape_calendar(driver, wait, store_number, url):
     max_days = 3
     total_days_scraped = 0
 
-for month_shift in range(2):
-    # If we're shifting to next month, click to next month in the calendar
-    if month_shift == 1:
-        try:
-            next_month_btn = wait.until(
-                EC.element_to_be_clickable(
-                    (By.XPATH, "//div[contains(@class, 'cal-arrow') and contains(@class, 'right')]")
+    for month_shift in range(2):
+        # If we're shifting to next month, click to next month in the calendar
+        if month_shift == 1:
+            try:
+                next_month_btn = wait.until(
+                    EC.element_to_be_clickable(
+                        (By.XPATH, "//div[contains(@class, 'cal-arrow') and contains(@class, 'right')]")
+                    )
                 )
+                driver.execute_script("arguments[0].click();", next_month_btn)
+                for _ in range(20):
+                    try:
+                        cal_header = driver.find_element(By.CSS_SELECTOR, ".cal-header-title").text.strip()
+                        expected_header = datetime(current_year, current_month % 12 + 1, 1).strftime('%B %Y')
+                        if expected_header in cal_header:
+                            break
+                    except Exception:
+                        pass
+                    time.sleep(0.3)
+                if current_month == 12:
+                    current_month = 1
+                    current_year += 1
+                else:
+                    current_month += 1
+            except Exception as e:
+                print("No next month or error: ", e)
+                break
+
+        # Always try to find available days for the current month,
+        # regardless of whether it's the first or second iteration.
+        try:
+            available_elements = wait.until(
+                EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
             )
-            driver.execute_script("arguments[0].click();", next_month_btn)
-            for _ in range(20):
-                try:
-                    cal_header = driver.find_element(By.CSS_SELECTOR, ".cal-header-title").text.strip()
-                    expected_header = datetime(current_year, current_month % 12 + 1, 1).strftime('%B %Y')
-                    if expected_header in cal_header:
-                        break
-                except Exception:
-                    pass
-                time.sleep(0.3)
-            if current_month == 12:
-                current_month = 1
-                current_year += 1
-            else:
-                current_month += 1
-        except Exception as e:
-            print("No next month or error: ", e)
-            break
+        except Exception:
+            print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
+            available_elements = []  # No days found, but DON'T break—just continue
 
-    # Always try to find available days for the current month,
-    # regardless of whether it's the first or second iteration.
-    try:
-        available_elements = wait.until(
-            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
-        )
-    except Exception:
-        print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
-        available_elements = []  # No days found, but DON'T break—just continue
+        month_days = []
+        for el in available_elements:
+            day_txt = el.text.strip()
+            if not day_txt.isdigit():
+                continue
+            day_num = int(day_txt)
+            if month_shift == 0 and current_year == today.year and current_month == today.month and day_num < today.day:
+                continue
+            month_days.append(day_num)
 
-    month_days = []
-    for el in available_elements:
-        day_txt = el.text.strip()
-        if not day_txt.isdigit():
-            continue
-        day_num = int(day_txt)
-        if month_shift == 0 and current_year == today.year and current_month == today.month and day_num < today.day:
-            continue
-        month_days.append(day_num)
+        month_days = sorted(list(set(month_days)))
 
-    month_days = sorted(list(set(month_days)))
+        print(f"\n📅 [{current_year}-{current_month:02d}] Found days: {month_days}")
 
-    print(f"\n📅 [{current_year}-{current_month:02d}] Found days: {month_days}")
-
-    for day_num in month_days:
-        if total_days_scraped >= max_days:
-            break
+        for day_num in month_days:
+            if total_days_scraped >= max_days:
+                break
 
             print(f"\n👉 Clicking date: {day_num} ({calendar.month_name[current_month]})")
             day_found = False
@@ -389,6 +389,51 @@ for month_shift in range(2):
           <div class="doctor-line">{doctor_line}</div>
           <div class="day-body">{times_html}</div>
         </div>'''
+
+    html_output = f"""
+    <!DOCTYPE html>
+    <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eye Appointment Schedule</title>
+    <style>
+    body {{ font-family: 'Segoe UI', sans-serif; background: #fff; color: #222; padding: 350px 20px 40px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }}
+    .top-bar {{ position: fixed; top: 0; left: 0; right: 0; background: #fff; text-align: center; padding-top: 20px; z-index: 50; }}
+    .top-bar h1 {{ font-size: min(12vw, 80px); color: #cc0000; margin: 0; }}
+    .top-bar .subtitle {{ font-size: min(6vw, 40px); margin: 5px 0; color: #333; }}
+    .top-bar .updated {{ font-size: min(5vw, 28px); margin-bottom: 10px; color: #222; }}
+    .availability {{ font-size: min(8vw, 56px); color: #007700; margin-top: 20px; }}
+    .logo {{ position: absolute; top: 20px; right: 20px; height: 200px; }}
+    .day-card {{ width: 420px; background: #f9f9f9; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 20px; border: 2px solid #ccc; }}
+    .day-header {{ font-size: min(6vw, 32px); font-weight: bold; color: #cc0000; }}
+    .big-date {{ font-size: min(10vw, 64px); }}
+    .doctor-line {{ font-size: min(5.5vw, 36px); color: #1a237e; font-weight: bold; text-align: center; margin-bottom: 15px; }}
+    .time-block {{ margin-top: 15px; }}
+    .time-block h4 {{ font-size: min(6vw, 36px); margin-bottom: 5px; }}
+    .slot {{ font-size: min(8vw, 56px); padding: 16px; margin: 10px 0; background: #e6f4ea; border-left: 6px solid #4CAF50; border-radius: 6px; text-align: center; }}
+    .none {{ background: #ffe5e5; border-left-color: #f44336; }}
+    .footer {{ width: 100%; text-align: center; margin-top: 40px; }}
+    .footer p {{ font-size: min(5vw, 42px); }}
+    .footer img {{ height: 360px; margin-top: 10px; }}
+    </style></head><body>
+    <header class="top-bar">
+    <img class="logo" src="data:{logo_mime};base64,{logo_base64}" alt="Logo">
+    <h1>Target Optical – Store #{store_number}</h1>
+    <h2 class="subtitle">Appointment Availability</h2>
+    <p class="availability">Appointments available as soon as {avail_message}</p>
+    <p class="updated">Last updated: {datetime.now().strftime('%A, %B %d, %Y %I:%M %p')}</p>
+    </header>{day_cards}<div class="footer">
+    <p>For appointments further out, please visit our website or scan the QR code:</p>
+    <img src="data:image/png;base64,{qr_base64}" alt="QR Code"></div></body></html>
+    """
+
+    with open(HTML_FILENAME, "w", encoding="utf-8") as f:
+        f.write(html_output)
+
+    if is_update_banner_set():
+        display_update_banner_on_html(HTML_FILENAME)
+
+    print(f"✅ HTML saved at ~/{HTML_FILENAME}")
+    driver.quit()
+
 
     html_output = f"""
     <!DOCTYPE html>
