@@ -227,57 +227,61 @@ def scrape_calendar(driver, wait, store_number, url):
     max_days = 3
     total_days_scraped = 0
 
-    for month_shift in range(2):
-        if month_shift == 1:
-            try:
-                next_month_btn = wait.until(EC.element_to_be_clickable(
+for month_shift in range(2):
+    # If we're shifting to next month, click to next month in the calendar
+    if month_shift == 1:
+        try:
+            next_month_btn = wait.until(
+                EC.element_to_be_clickable(
                     (By.XPATH, "//div[contains(@class, 'cal-arrow') and contains(@class, 'right')]")
-                ))
-                driver.execute_script("arguments[0].click();", next_month_btn)
-                for _ in range(20):
-                    try:
-                        cal_header = driver.find_element(By.CSS_SELECTOR, ".cal-header-title").text.strip()
-                        expected_header = datetime(current_year, current_month % 12 + 1, 1).strftime('%B %Y')
-                        if expected_header in cal_header:
-                            break
-                    except Exception:
-                        pass
-                    time.sleep(0.3)
-                if current_month == 12:
-                    current_month = 1
-                    current_year += 1
-                else:
-                    current_month += 1
-            except Exception as e:
-                print("No next month or error: ", e)
-                break
-
-            try:
-                available_elements = wait.until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
                 )
-            except Exception:
-                print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
-                available_elements = []  # No days found, but DON'T break—go to next month
+            )
+            driver.execute_script("arguments[0].click();", next_month_btn)
+            for _ in range(20):
+                try:
+                    cal_header = driver.find_element(By.CSS_SELECTOR, ".cal-header-title").text.strip()
+                    expected_header = datetime(current_year, current_month % 12 + 1, 1).strftime('%B %Y')
+                    if expected_header in cal_header:
+                        break
+                except Exception:
+                    pass
+                time.sleep(0.3)
+            if current_month == 12:
+                current_month = 1
+                current_year += 1
+            else:
+                current_month += 1
+        except Exception as e:
+            print("No next month or error: ", e)
+            break
 
+    # Always try to find available days for the current month,
+    # regardless of whether it's the first or second iteration.
+    try:
+        available_elements = wait.until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
+        )
+    except Exception:
+        print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
+        available_elements = []  # No days found, but DON'T break—just continue
 
-        month_days = []
-        for el in available_elements:
-            day_txt = el.text.strip()
-            if not day_txt.isdigit():
-                continue
-            day_num = int(day_txt)
-            if month_shift == 0 and current_year == today.year and current_month == today.month and day_num < today.day:
-                continue
-            month_days.append(day_num)
+    month_days = []
+    for el in available_elements:
+        day_txt = el.text.strip()
+        if not day_txt.isdigit():
+            continue
+        day_num = int(day_txt)
+        if month_shift == 0 and current_year == today.year and current_month == today.month and day_num < today.day:
+            continue
+        month_days.append(day_num)
 
-        month_days = sorted(list(set(month_days)))
+    month_days = sorted(list(set(month_days)))
 
-        print(f"\n📅 [{current_year}-{current_month:02d}] Found days: {month_days}")
+    print(f"\n📅 [{current_year}-{current_month:02d}] Found days: {month_days}")
 
-        for day_num in month_days:
-            if total_days_scraped >= max_days:
-                break
+    for day_num in month_days:
+        if total_days_scraped >= max_days:
+            break
 
             print(f"\n👉 Clicking date: {day_num} ({calendar.month_name[current_month]})")
             day_found = False
