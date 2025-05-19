@@ -252,13 +252,13 @@ def scrape_calendar(driver, wait, store_number, url):
                 print("No next month or error: ", e)
                 break
 
-        try:
-    available_elements = wait.until(
-        EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
-    )
-except Exception:
-    print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
-    available_elements = []  # No days found, but DON'T break—go to next month
+            try:
+                available_elements = wait.until(
+                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.cal-cell-day-layout.available"))
+                )
+            except Exception:
+                print(f"❌ No available appointment days found in {calendar.month_name[current_month]} {current_year}.")
+                available_elements = []  # No days found, but DON'T break—go to next month
 
 
         month_days = []
