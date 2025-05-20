@@ -1,157 +1,197 @@
-Target Optical Scraper – README
+# Target Optical Scraper
 
+## Overview
 
-(Overview)
-This project automatically scrapes and displays Target Optical eye appointment availability, updating every 5 minutes.
+This project automatically scrapes and displays Target Optical eye appointment availability, updating every 5 minutes.  
 The results are shown in a visually clear HTML dashboard, ideal for digital signage, kiosks, or in-office displays.
-It supports self-updating from GitHub and can be set to run only during certain hours.
 
-(How It Works)
-Python script (target_optical_scraper.py) scrapes availability and generates the eye_appointments.html file.
+- **Self-updating:** Pulls updates from GitHub automatically.
+- **Configurable hours:** Set run times with `scraper_config.json`.
+- **Kiosk-ready:** Use on digital signage, with auto-start support.
 
-Configurable: Set run hours with scraper_config.json (see below).
+---
 
-Auto-updates: Checks GitHub for updates and applies them automatically.
+## How It Works
 
-Auto-starts: With Initialize_auto_start.sh, the script will run automatically in the background at boot via cron.
+- The Python script (`target_optical_scraper.py`) scrapes appointment availability and generates `eye_appointments.html`.
+- Run hours are configurable via `scraper_config.json` (see below).
+- Script auto-updates from GitHub.
+- Optional: Auto-start at boot using `Initialize_auto_start.sh` (sets up a cron job).
+- Runs quietly in the background (headless mode). No terminal window appears unless run manually.
 
-Runs quietly: The script runs in the background (headless), so you won’t see a terminal window unless you run it manually.
+---
 
-(First-Time Setup)
+## First-Time Setup
 
+### Install All Dependencies
 
-(Install all dependencies:)
-
+```bash
 sudo apt update
 sudo apt install python3 python3-pip git
 pip3 install selenium webdriver-manager qrcode
-(You may need to install chromium-chromedriver or similar for your OS.)
+```
 
-(Clone the repository:)
+> You may also need to install `chromium-chromedriver` or similar for your OS.
 
+### Clone the Repository
+
+```bash
 git clone https://github.com/brandond007/target_optical_scraper.git
 cd target_optical_scraper
-(Optional) Add your logo:
-Save your logo as logo.png or logo.jpeg in the same directory.
+```
 
-(Configure run hours) (optional):
-After first run, a file named scraper_config.json will appear:
+#### (Optional) Add Your Logo
 
+Save your logo as `logo.png` or `logo.jpeg` in the project directory.
+
+---
+
+## Configuring Run Hours (Optional)
+
+After first run, a file named `scraper_config.json` will appear:
+
+```json
 {
   "start_hour": null,
   "end_hour": null
 }
-(Set these to the desired start/end hour in 24-hour format (e.g., 8 for 8 AM, 18 for 6 PM).
+```
 
-null means always-on.
+- Set `start_hour` and `end_hour` to desired 24-hour times (e.g., `8` for 8 AM, `18` for 6 PM).
+- `null` means always-on.
 
-(Test the script:)
+---
 
+## Test the Script
+
+```bash
 python3 target_optical_scraper.py
-(On first run, it will create the config file and may prompt you to edit it.)
+```
 
-(Auto-Start on Boot) (Kiosk Mode)
-To run the scraper automatically at startup in the background, use the provided Initialize_auto_start.sh script.
-This will create a cronjob that runs the scraper after every boot. The process is “invisible” (no terminal will pop up).
+- On first run, the script creates the config file and may prompt you to edit it.
 
-(To set up auto-start:)
+---
 
+## Auto-Start on Boot (Kiosk Mode)
+
+Use `Initialize_auto_start.sh` to set up auto-start in the background at boot (via cron).
+
+### Setup
+
+```bash
 chmod +x Initialize_auto_start.sh
 ./Initialize_auto_start.sh
-(What this does:)
+```
 
-Adds a cronjob for your user:
-@reboot cd /path/to/target_optical_scraper && python3 target_optical_scraper.py >> scraper_cron.log 2>&1
+**What this does:**
+- Adds a cronjob for your user:
+  ```
+  @reboot cd /path/to/target_optical_scraper && python3 target_optical_scraper.py >> scraper_cron.log 2>&1
+  ```
+- Script runs in the background after every reboot.
+- Output and errors go to `scraper_cron.log` in the project folder.
 
-The script runs in the background after every reboot.
+---
 
-Output and errors go to scraper_cron.log in the project folder.
+## Viewing or Controlling the Background Script
 
-(How to View or Control the Background Script)
-Since the cronjob runs the script in the background:
+- **Check if running:**
+  ```bash
+  ps aux | grep target_optical_scraper.py
+  # or
+  pgrep -af target_optical_scraper.py
+  ```
 
-1. To check if it’s running
+- **See live output:**
+  ```bash
+  tail -f scraper_cron.log
+  ```
 
-ps aux | grep target_optical_scraper.py
-or
+- **Manually stop the script:**
+  ```bash
+  pkill -f target_optical_scraper.py
+  ```
 
-pgrep -af target_optical_scraper.py
-2. To see the live output
+- **Manually run in foreground:**
+  ```bash
+  python3 target_optical_scraper.py
+  ```
 
-(Check the log file produced by cron:)
+---
 
-tail -f scraper_cron.log
+## Logs & Troubleshooting
 
-(3. To manually stop the script)
+- `debug_log.txt`: Detailed logs for debugging (updates, errors, scraping events).
+- `scraper_cron.log`: All terminal output from cronjob.
 
-Find the process and kill it:
-pkill -f target_optical_scraper.py
+**If the script is not updating:**
+- Check both logs for errors.
+- Make sure dependencies are installed and `chromedriver` is available.
 
-(4. To manually run the script in the foreground) (with terminal output)
+---
 
-python3 target_optical_scraper.py
-Logs & Troubleshooting
-debug_log.txt contains detailed logs for debugging (updates, errors, scraping events).
+## Configuration (`scraper_config.json`)
 
-(scraper_cron.log shows all terminal output from the cronjob.)
+Control when the scraper runs (24-hour format):
 
-(If the script is not updating:)
-
-Check both logs for errors.
-
-Make sure dependencies are installed and chromedriver is available.
-
-(Configuration: scraper_config.json)
-Edit this file to control when the scraper runs (24-hour format):
-
+```json
 {
   "start_hour": 8,
   "end_hour": 18
 }
-(Example above runs from 8:00 to 18:59 every day.)
-(Use null for always-on.)
+```
+- Example above: Runs from 8:00 to 18:59 every day.
+- Use `null` for always-on.
 
-(Updating the Script)
-Auto-update:
-The script checks for updates on GitHub every 10 refreshes (about every 50 minutes by default).
-If an update is found, it will pull changes and restart itself automatically.
+---
 
-(Manual update:)
-From the project directory:
+## Updating the Script
 
-git pull
+- **Auto-update:**  
+  Script checks for GitHub updates every 10 refreshes (about every 50 minutes by default). If an update is found, it pulls changes and restarts itself.
+- **Manual update:**  
+  In the project directory:
+  ```bash
+  git pull
+  ```
 
+---
 
-(FAQ)
-Where is the output?
-The HTML dashboard is saved as eye_appointments.html in the project folder.
+## FAQ
 
-(How do I display it?)
-Open the file in any web browser or point your digital signage solution to it.
+**Where is the output?**  
+The HTML dashboard is saved as `eye_appointments.html` in the project folder.
 
-(Can I see live terminal output?)
-Only if you run the script manually, or by checking scraper_cron.log.
+**How do I display it?**  
+Open the file in any web browser, or point your digital signage solution to it.
 
-(How do I disable auto-start?)
+**Can I see live terminal output?**  
+Only if you run the script manually, or by checking `scraper_cron.log`.
+
+**How do I disable auto-start?**  
 Edit your crontab:
-
+```bash
 crontab -e
-Then remove the line referring to target_optical_scraper.py.
+```
+Remove the line referring to `target_optical_scraper.py`.
 
-------------Files-----------------
-target_optical_scraper.py – main script
+---
 
-scraper_config.json – schedule configuration
+## Files
 
-eye_appointments.html – output dashboard
+- `target_optical_scraper.py` – Main script
+- `scraper_config.json` – Schedule configuration
+- `eye_appointments.html` – Output dashboard
+- `debug_log.txt` – Debugging log file
+- `scraper_cron.log` – Output from cron background run
+- `Initialize_auto_start.sh` – Auto-start setup script
 
-debug_log.txt – log file for debugging
+---
 
-scraper_cron.log – output from cron background run
+## Advanced
 
-Initialize_auto_start.sh – auto-start setup script
+You can run the script as another user, or as a `systemd` service for advanced setups.
 
-(Advanced)
-You can run the script as another user, or as a systemd service, for more advanced setups.
+For persistent digital signage, use a browser in kiosk mode pointed to `eye_appointments.html`.
 
-For persistent digital signage, use a browser in kiosk mode pointed to eye_appointments.html.
+---
